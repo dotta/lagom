@@ -1,1 +1,2 @@
+CreateProjectWithoutActivator:Creating a new Lagom project without Activator
 ImmutablesInIDEs:Set up Immutables in your IDE
