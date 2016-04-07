@@ -31,6 +31,7 @@ import play.api.inject.Injector
 import play.api.libs.streams.{ AkkaStreams, Accumulator }
 import play.api.routing.SimpleRouter
 import play.api.routing.Router.Routes
+import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
 import scala.compat.java8.FutureConverters._
 import scala.compat.java8.OptionConverters._
@@ -108,7 +109,7 @@ case class ResolvedService[T](interface: Class[T], descriptor: Descriptor)
 
 @Singleton
 class ResolvedServicesProvider(bindings: Seq[ServiceGuiceSupport.ServiceBinding[_]]) extends Provider[ResolvedServices] {
-  def this(bindings: Array[ServiceGuiceSupport.ServiceBinding[_]]) = this(bindings.toSeq)
+  def this(bindings: Array[ServiceGuiceSupport.ServiceBinding[_]]) = this(bindings.toVector)
 
   @Inject var serverBuilder: ServerBuilder = null
   @Inject var injector: Injector = null
@@ -125,9 +126,10 @@ class ResolvedServicesProvider(bindings: Seq[ServiceGuiceSupport.ServiceBinding[
 class ServiceRouter @Inject() (resolvedServices: ResolvedServices, httpConfiguration: HttpConfiguration)(implicit ec: ExecutionContext, mat: Materializer) extends SimpleRouter {
 
   private val serviceRouters = resolvedServices.services.map { service =>
-    new SingleServiceRouter(service.descriptor, service.descriptor.calls.asScala.map { call =>
+    val serviceRoutes: Seq[ServiceRoute] = (service.descriptor.calls.asScala.map { call =>
       ServiceRoute(call)
-    }, httpConfiguration)
+    })(collection.breakOut)
+    new SingleServiceRouter(service.descriptor, serviceRoutes, httpConfiguration)
   }
 
   override val routes: Routes =
