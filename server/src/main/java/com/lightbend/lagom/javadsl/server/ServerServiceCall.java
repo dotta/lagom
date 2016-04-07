@@ -7,7 +7,6 @@ import akka.japi.Pair;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.transport.RequestHeader;
 import com.lightbend.lagom.javadsl.api.transport.ResponseHeader;
-import play.Logger;
 
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
