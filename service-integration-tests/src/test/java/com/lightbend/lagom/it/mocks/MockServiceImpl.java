@@ -11,7 +11,7 @@ import akka.stream.javadsl.Source;
 import akka.NotUsed;
 
 import com.lightbend.lagom.javadsl.api.ServiceCall;
-import com.lightbend.lagom.javadsl.api.transport.NotFound;
+import com.lightbend.lagom.api.transport.NotFound;
 import com.lightbend.lagom.javadsl.api.transport.ResponseHeader;
 import com.lightbend.lagom.javadsl.server.HeaderServiceCall;
 import com.lightbend.lagom.javadsl.server.ServerServiceCall;

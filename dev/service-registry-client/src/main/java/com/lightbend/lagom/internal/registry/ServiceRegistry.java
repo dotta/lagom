@@ -3,9 +3,7 @@
  */
 package com.lightbend.lagom.internal.registry;
 
-import static com.lightbend.lagom.javadsl.api.Service.named;
-import static com.lightbend.lagom.javadsl.api.Service.pathCall;
-import static com.lightbend.lagom.javadsl.api.Service.restCall;
+import static com.lightbend.lagom.javadsl.api.Service.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,22 +12,19 @@ import java.util.Optional;
 
 import org.pcollections.PSequence;
 
-import akka.NotUsed;
-import akka.util.ByteString;
+import com.lightbend.lagom.api.deser.DeserializationException;
+import com.lightbend.lagom.api.deser.SerializationException;
+import com.lightbend.lagom.api.transport.Method;
+import com.lightbend.lagom.api.transport.NotAcceptable;
+import com.lightbend.lagom.api.transport.UnsupportedMediaType;
 import com.lightbend.lagom.javadsl.api.Descriptor;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
-import com.lightbend.lagom.javadsl.api.deser.DeserializationException;
-import com.lightbend.lagom.javadsl.api.deser.SerializationException;
 import com.lightbend.lagom.javadsl.api.deser.StrictMessageSerializer;
-import com.lightbend.lagom.javadsl.api.deser.MessageSerializer.NegotiatedDeserializer;
-import com.lightbend.lagom.javadsl.api.deser.MessageSerializer.NegotiatedSerializer;
 import com.lightbend.lagom.javadsl.api.transport.MessageProtocol;
-import com.lightbend.lagom.javadsl.api.transport.Method;
-import com.lightbend.lagom.javadsl.api.transport.NotAcceptable;
-import com.lightbend.lagom.javadsl.api.transport.TransportErrorCode;
-import com.lightbend.lagom.javadsl.api.transport.TransportException;
-import com.lightbend.lagom.javadsl.api.transport.UnsupportedMediaType;
+
+import akka.NotUsed;
+import akka.util.ByteString;
 
 public interface ServiceRegistry extends Service {
 

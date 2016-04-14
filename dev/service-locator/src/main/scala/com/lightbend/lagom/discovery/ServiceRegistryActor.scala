@@ -8,7 +8,7 @@ import java.util.regex.Pattern
 import akka.Done
 import akka.actor.{ Actor, Status }
 import com.lightbend.lagom.internal.registry.ServiceRegistryService
-import com.lightbend.lagom.javadsl.api.transport.{ TransportException, TransportErrorCode }
+import com.lightbend.lagom.api.transport.{ TransportException, TransportErrorCode }
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
 import com.google.inject.Inject

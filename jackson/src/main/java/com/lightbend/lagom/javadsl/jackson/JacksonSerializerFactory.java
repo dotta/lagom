@@ -8,8 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.lightbend.lagom.internal.jackson.JacksonObjectMapperProvider;
-import com.lightbend.lagom.javadsl.api.deser.DeserializationException;
-import com.lightbend.lagom.javadsl.api.deser.SerializationException;
+import com.lightbend.lagom.api.deser.DeserializationException;
+import com.lightbend.lagom.api.deser.SerializationException;
 import com.lightbend.lagom.javadsl.api.deser.SerializerFactory;
 import com.lightbend.lagom.javadsl.api.deser.StrictMessageSerializer;
 import com.lightbend.lagom.javadsl.api.transport.MessageProtocol;
@@ -51,7 +51,7 @@ public class JacksonSerializerFactory implements SerializerFactory {
     @Override
     public <MessageEntity> StrictMessageSerializer<MessageEntity> messageSerializerFor(Type type) {
         if (type == Done.class)
-          return new DoneMessageSerializer<>();
+          return new DoneMessageSerializer<>(); //FIXME: cache it? 
         else
           return new JacksonMessageSerializer<>(type);
     }

@@ -29,6 +29,7 @@ import javax.inject.Named;
 import org.pcollections.PSequence;
 
 import com.lightbend.lagom.internal.registry.RegisteredService;
+import com.lightbend.lagom.api.transport.NotFound;
 
 public class ServiceRegistryImpl implements ServiceRegistry {
 
@@ -74,7 +75,7 @@ public class ServiceRegistryImpl implements ServiceRegistry {
 				if (location.isPresent()) {
 					return location.get();
 				} else {
-					throw new com.lightbend.lagom.javadsl.api.transport.NotFound(name);
+					throw new NotFound(name);
 				}
 			});
 		};

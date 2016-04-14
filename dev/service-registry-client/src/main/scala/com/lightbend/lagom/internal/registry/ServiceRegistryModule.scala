@@ -12,8 +12,9 @@ import javax.inject.{ Provider, Inject, Singleton }
 import akka.stream.Materializer
 import com.google.inject.AbstractModule
 import com.lightbend.lagom.internal.client.{ CircuitBreaker, ServiceClientLoader, ServiceClientImplementor, WebSocketClient }
-import com.lightbend.lagom.javadsl.api.transport.NotFound
-import com.lightbend.lagom.javadsl.api.{ ServiceLocator, ServiceInfo }
+import com.lightbend.lagom.api.transport.NotFound
+import com.lightbend.lagom.api.ServiceInfo
+import com.lightbend.lagom.javadsl.api.ServiceLocator
 import com.lightbend.lagom.javadsl.jackson.{ JacksonExceptionSerializer, JacksonSerializerFactory }
 import play.api.{ Mode, Configuration, Environment, Logger }
 import play.api.libs.ws.WSClient

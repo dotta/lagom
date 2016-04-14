@@ -3,22 +3,23 @@
  */
 package com.lightbend.lagom.it.mocks;
 
-import com.lightbend.lagom.javadsl.api.Descriptor.CircuitBreakerId;
+import static com.lightbend.lagom.javadsl.api.Service.*;
 
-import akka.Done;
-import akka.stream.javadsl.Source;
-import akka.NotUsed;
+import java.util.Arrays;
+import java.util.Optional;
 
+import com.lightbend.lagom.api.transport.Method;
 import com.lightbend.lagom.javadsl.api.Descriptor;
+import com.lightbend.lagom.spi.CircuitBreakerId;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
 import com.lightbend.lagom.javadsl.api.deser.IdSerializer;
 import com.lightbend.lagom.javadsl.api.deser.IdSerializers;
 import com.lightbend.lagom.javadsl.api.deser.RawId;
-import com.lightbend.lagom.javadsl.api.transport.Method;
-import static com.lightbend.lagom.javadsl.api.Service.*;
-import java.util.Arrays;
-import java.util.Optional;
+
+import akka.Done;
+import akka.NotUsed;
+import akka.stream.javadsl.Source;
 
 public interface MockService extends Service {
 

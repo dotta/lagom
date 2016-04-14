@@ -11,12 +11,12 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
-import com.lightbend.lagom.javadsl.api.deser.ExceptionMessage;
+import com.lightbend.lagom.api.deser.ExceptionMessage;
 import com.lightbend.lagom.javadsl.api.deser.ExceptionSerializer;
 import com.lightbend.lagom.javadsl.api.deser.RawExceptionMessage;
 import com.lightbend.lagom.javadsl.api.transport.MessageProtocol;
-import com.lightbend.lagom.javadsl.api.transport.TransportErrorCode;
-import com.lightbend.lagom.javadsl.api.transport.TransportException;
+import com.lightbend.lagom.api.transport.TransportErrorCode;
+import com.lightbend.lagom.api.transport.TransportException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;

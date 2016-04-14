@@ -3,13 +3,14 @@
  */
 package com.lightbend.lagom.internal.api.tools;
 
-import akka.NotUsed;
+import static com.lightbend.lagom.javadsl.api.Service.*;
+
+import com.lightbend.lagom.api.transport.Method;
 import com.lightbend.lagom.javadsl.api.Descriptor;
 import com.lightbend.lagom.javadsl.api.Service;
 import com.lightbend.lagom.javadsl.api.ServiceCall;
-import com.lightbend.lagom.javadsl.api.transport.Method;
 
-import static com.lightbend.lagom.javadsl.api.Service.*;
+import akka.NotUsed;
 
 public interface AclService extends Service {
 

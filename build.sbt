@@ -163,13 +163,19 @@ def multiJvmTestSettings: Seq[Setting[_]] = SbtMultiJvm.multiJvmSettings ++ Seq(
 
 
 val apiProjects = Seq[ProjectReference](
-  api,
+  `api-core`,
+  `api-java`,
+  `api-scala`,
   `api-tools`,
   spi,
   jackson,
   core,
-  server,
-  client,
+  `server-core`,
+  `server-java`,
+  `server-scala`,
+  `client-core`,
+  `client-java`,
+  `client-scala`,
   cluster,
   pubsub,
   persistence,
@@ -200,19 +206,48 @@ lazy val root = (project in file("."))
 def RuntimeLibPlugins = AutomateHeaderPlugin && Sonatype && PluginsAccessor.exclude(BintrayPlugin) 
 def SbtPluginPlugins = AutomateHeaderPlugin && BintrayPlugin && PluginsAccessor.exclude(Sonatype) 
 
-lazy val api = (project in file("api"))
-  .settings(name := "lagom-javadsl-api")
+def JavaDSLProject(baseFolder: String) = LibProject(baseFolder, "javadsl")
+def ScalaDSLProject(baseFolder: String) = LibProject(baseFolder, "scaladsl")
+def CoreLibProject(baseFolder: String) = LibProject(baseFolder, "core")
+  
+def LibProject(baseFolder: String, projectFolder: String) = Project(id = s"${baseFolder}-${projectFolder}", base = file(baseFolder) / projectFolder)
+  .settings(
+    name := s"lagom-${baseFolder}-${projectFolder}",
+    moduleName := s"lagom-${projectFolder}-${baseFolder}"
+  )
   .settings(runtimeLibCommon: _*)
   .enablePlugins(RuntimeLibPlugins)
+
+lazy val `api-core` = CoreLibProject("api")
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.scala-lang.modules" %% "scala-java8-compat" % "0.8.0-RC1",
+      "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
+      "org.pcollections" % "pcollections" % "2.1.2"
+    )
+  )
+  .dependsOn(spi)
+
+lazy val `api-java` = JavaDSLProject("api")
+  .dependsOn(`api-core`)
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.play" %% "play-java" % PlayVersion,
-      "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
-      "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
-      "org.pcollections" % "pcollections" % "2.1.2",
       "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
       scalaTest % Test,
       "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % JacksonVersion % Test
+    )
+  )
+
+lazy val `api-scala` = ScalaDSLProject("api")
+  .dependsOn(`api-core`)
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.typesafe.play" %% "play" % PlayVersion,
+      "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
+      "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
+      scalaTest % Test
     )
   )
 
@@ -234,7 +269,7 @@ lazy val jackson = (project in file("jackson"))
   .settings(runtimeLibCommon: _*)
   .enablePlugins(RuntimeLibPlugins)
   .settings(
-    libraryDependencies ++= Seq(      
+    libraryDependencies ++= Seq(
       "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % JacksonVersion,
       "com.fasterxml.jackson.datatype" % "jackson-datatype-pcollections" % JacksonVersion,
       "com.fasterxml.jackson.datatype" % "jackson-datatype-guava" % JacksonVersion,
@@ -244,7 +279,18 @@ lazy val jackson = (project in file("jackson"))
       scalaTest % Test,
       "com.novocode" % "junit-interface" % "0.11" % "test")
   )
-  .dependsOn(api, immutables % "test->compile")
+  .dependsOn(`api-java`, immutables % "test->compile")
+
+lazy val `play-json` = (project in file("play-json"))
+  .settings(name := "lagom-scaladsl-play-json")
+  .settings(runtimeLibCommon: _*)
+  .enablePlugins(RuntimeLibPlugins)
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.typesafe.play" %% "play-json" % PlayVersion
+    )
+  )
+  .dependsOn(`api-scala`)
 
 lazy val `api-tools` = (project in file("api-tools"))
   .settings(runtimeLibCommon: _*)
@@ -256,20 +302,19 @@ lazy val `api-tools` = (project in file("api-tools"))
     )
   )
   .dependsOn(
-    api,
-    `server` % "compile->test"
+    `api-java`,
+    `server-java` % "compile->test"
   )
 
 lazy val core = (project in file("core"))
   .settings(name := "lagom-core")
   .settings(runtimeLibCommon: _*)
   .enablePlugins(RuntimeLibPlugins)
-  .dependsOn(api, jackson)
+  .settings(
+    libraryDependencies += "com.google.inject" % "guice" % "4.0"
+  )
 
-lazy val client = (project in file("client"))
-  .settings(name := "lagom-javadsl-client")
-  .settings(runtimeLibCommon: _*)
-  .enablePlugins(RuntimeLibPlugins)
+lazy val `client-core` = CoreLibProject("client")
   .settings(
     libraryDependencies ++= Seq(
       "com.typesafe.play" %% "play-ws" % PlayVersion,
@@ -277,13 +322,20 @@ lazy val client = (project in file("client"))
       "io.dropwizard.metrics" % "metrics-core" % "3.1.2"
     )
   )
-  .dependsOn(core, spi)
+  .dependsOn(`api-core`, spi)
 
-lazy val server = (project in file("server"))
-  .settings(name := "lagom-javadsl-server")
-  .enablePlugins(RuntimeLibPlugins)
-  .settings(runtimeLibCommon: _*)
-  .dependsOn(core, client, immutables % "provided")
+lazy val `client-java` = JavaDSLProject("client")
+  .dependsOn(`client-core`, core, `api-java`, jackson)
+
+lazy val `client-scala` = ScalaDSLProject("client")
+
+lazy val `server-core` = CoreLibProject("server")
+
+lazy val `server-java` = JavaDSLProject("server")
+  .dependsOn(`client-java`, immutables % "provided")
+
+lazy val `server-scala` = ScalaDSLProject("server")
+  .dependsOn(`client-scala`)  
 
 lazy val testkit = (project in file("testkit"))
   .settings(name := "lagom-javadsl-testkit")
@@ -298,7 +350,7 @@ lazy val testkit = (project in file("testkit"))
       scalaTest % Test
     )
   )
-  .dependsOn(server, pubsub, persistence % "compile;test->test") 
+  .dependsOn(`server-java`, pubsub, persistence % "compile;test->test") 
 
 lazy val `service-integration-tests` = (project in file("service-integration-tests"))
   .settings(name := "lagom-service-integration-tests")
@@ -314,7 +366,7 @@ lazy val `service-integration-tests` = (project in file("service-integration-tes
     PgpKeys.publishSigned := {},
     publish := {}
   )
-  .dependsOn(server, persistence, pubsub, testkit, logback)
+  .dependsOn(`server-java`, persistence, pubsub, testkit, logback)
 
 // for forked tests, necessary for Cassandra
 def forkedTests: Seq[Setting[_]] = Seq(
@@ -339,7 +391,7 @@ def singleTestsGrouping(tests: Seq[TestDefinition]) = {
 
 lazy val cluster = (project in file("cluster"))
   .settings(name := "lagom-javadsl-cluster")
-  .dependsOn(api, jackson)
+  .dependsOn(`api-java`, jackson)
   .settings(runtimeLibCommon: _*)
   .settings(multiJvmTestSettings: _*)
   .enablePlugins(RuntimeLibPlugins)
@@ -506,25 +558,25 @@ lazy val `service-locator` = (project in file("dev") / "service-locator")
       scalaTest % Test
     )
   )
-  .dependsOn(server, logback, `service-registry-client`)
+  .dependsOn(`server-java`, logback, `service-registry-client`)
 
 lazy val `service-registry-client` = (project in file("dev") / "service-registry-client")
   .settings(name := "lagom-service-registry-client")
   .settings(runtimeLibCommon: _*)
   .enablePlugins(RuntimeLibPlugins)
-  .dependsOn(client, immutables % "provided")
+  .dependsOn(`client-java`, immutables % "provided")
 
 lazy val `service-registration` = (project in file("dev") / "service-registration")
   .settings(name := "lagom-service-registration")
   .settings(runtimeLibCommon: _*)
   .enablePlugins(RuntimeLibPlugins)
-  .dependsOn(server, `service-registry-client`)
+  .dependsOn(`server-java`, `service-registry-client`)
 
 lazy val `cassandra-registration` = (project in file("dev") / "cassandra-registration")
   .settings(name := "lagom-cassandra-registration")
   .settings(runtimeLibCommon: _*)
   .enablePlugins(RuntimeLibPlugins)
-  .dependsOn(api, persistence, `service-registry-client`)
+  .dependsOn(`api-java`, persistence, `service-registry-client`)
 
 lazy val `play-integration` = (project in file("dev") / "play-integration")
   .settings(name := "lagom-play-integration")
@@ -549,3 +601,5 @@ lazy val `cassandra-server` = (project in file("dev") / "cassandra-server")
       "org.apache.cassandra" % "cassandra-all" % CassandraAllVersion
     )
   )
+
+EclipseKeys.preTasks := Seq()

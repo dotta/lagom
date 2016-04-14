@@ -9,7 +9,7 @@ import akka.actor.{ Props, ActorSystem }
 import com.lightbend.lagom.discovery.ServiceRegistryActor
 import com.lightbend.lagom.internal.registry.{ ServiceRegistryService, ServiceRegistry }
 import com.lightbend.lagom.javadsl.api.ServiceAcl
-import com.lightbend.lagom.javadsl.api.transport.NotFound
+import com.lightbend.lagom.api.transport.NotFound
 import scala.compat.java8.FutureConverters._
 import scala.compat.java8.OptionConverters._
 import scala.concurrent.Await

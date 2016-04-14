@@ -16,7 +16,8 @@ import com.lightbend.lagom.internal.server._
 import com.lightbend.lagom.it.mocks._
 import com.lightbend.lagom.javadsl.api.Descriptor.{ NamedCallId, RestCallId, CallId, Call }
 import com.lightbend.lagom.javadsl.api.deser.MessageSerializer.{ NegotiatedDeserializer, NegotiatedSerializer }
-import com.lightbend.lagom.javadsl.api.deser.{ StreamedMessageSerializer, DeserializationException, SerializationException, StrictMessageSerializer }
+import com.lightbend.lagom.api.deser.{ DeserializationException, SerializationException }
+import com.lightbend.lagom.javadsl.api.deser.{ StreamedMessageSerializer, StrictMessageSerializer }
 import com.lightbend.lagom.javadsl.api.transport._
 import com.lightbend.lagom.javadsl.api._
 import com.lightbend.lagom.javadsl.jackson.{ JacksonExceptionSerializer, JacksonSerializerFactory }
@@ -32,6 +33,9 @@ import scala.util.control.NonFatal
 import com.typesafe.config.ConfigFactory
 import akka.actor.ReflectiveDynamicAccess
 import com.lightbend.lagom.internal.jackson.JacksonObjectMapperProvider
+import com.lightbend.lagom.api.ServiceInfo;
+import com.lightbend.lagom.api.transport._
+import scala.collection.immutable.Seq
 
 /**
  * A brief explanation of this spec.
