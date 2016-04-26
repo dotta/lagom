@@ -3,25 +3,24 @@
  */
 package com.lightbend.lagom.internal.api
 
-import java.lang.reflect._
-
 import akka.stream.javadsl.Source
-import com.lightbend.lagom.javadsl.api.deser.{ IdSerializer, MessageSerializer, SerializerFactory }
+import java.lang.reflect._
+import com.lightbend.lagom.internal.api.deser.{ CoreIdSerializer, CoreMessageSerializer, CoreSerializerFactory }
 
 class ServiceCallResolver(
-  idSerializers:      Map[Type, IdSerializer[_]],
-  messageSerializers: Map[Type, MessageSerializer[_, _]],
-  serializerFactory:  SerializerFactory
-) extends SerializerFactory {
+  idSerializers:      Map[Type, CoreIdSerializer[_]],
+  messageSerializers: Map[Type, CoreMessageSerializer[_, _]],
+  serializerFactory:  CoreSerializerFactory
+) extends CoreSerializerFactory {
 
-  def resolveIdSerializer[T](idSerializer: IdSerializer[T], typeInfo: Option[Type] = None) = idSerializer match {
+  def resolveIdSerializer[T](idSerializer: CoreIdSerializer[T], typeInfo: Option[Type] = None) = idSerializer match {
     case unresolved: UnresolvedIdSerializer[T] => unresolved.resolve(this, typeInfo)
     case resolved                              => resolved
   }
 
-  def idSerializerFor[T](idType: Type): IdSerializer[T] = {
+  def idSerializerFor[T](idType: Type): CoreIdSerializer[T] = {
     // First try a direct type lookup, then fall back to a raw class lookup
-    val serializer = idSerializers.get(idType).asInstanceOf[Option[IdSerializer[T]]] getOrElse {
+    val serializer = idSerializers.get(idType).asInstanceOf[Option[CoreIdSerializer[T]]] getOrElse {
       idType match {
         case clazz: Class[_] =>
           // in future, fallback to reflection based
@@ -34,15 +33,15 @@ class ServiceCallResolver(
       }
     }
 
-    resolveIdSerializer(serializer.asInstanceOf[IdSerializer[T]], Some(idType))
+    resolveIdSerializer(serializer.asInstanceOf[CoreIdSerializer[T]], Some(idType))
   }
 
-  def resolveMessageSerializer[T, W](messageSerializer: MessageSerializer[T, W], typeInfo: Option[Type] = None) = messageSerializer match {
+  def resolveMessageSerializer[T, W](messageSerializer: CoreMessageSerializer[T, W], typeInfo: Option[Type] = None) = messageSerializer match {
     case unresolved: UnresolvedMessageSerializer[T] => unresolved.resolve(this, typeInfo)
     case resolved                                   => resolved
   }
 
-  def messageSerializerFor[T](messageType: Type): MessageSerializer[T, _] = {
+  def messageSerializerFor[T](messageType: Type): CoreMessageSerializer[T, _] = {
     // First, try looking up the registered serializers
     // If that fails, see if it's a stream, and if so, return a serializer for that
     // Otherwise, use the configured serializer factory.
@@ -50,20 +49,20 @@ class ServiceCallResolver(
       .orElse(streamSerializerFor(messageType))
       .getOrElse(serializerFactory.messageSerializerFor(messageType))
 
-    resolveMessageSerializer(serializer.asInstanceOf[MessageSerializer[T, _]], Some(messageType))
+    resolveMessageSerializer(serializer.asInstanceOf[CoreMessageSerializer[T, _]], Some(messageType))
   }
 
-  private def streamSerializerFor[T](streamType: Type): Option[MessageSerializer[T, _]] = {
+  private def streamSerializerFor[T](streamType: Type): Option[CoreMessageSerializer[T, _]] = {
     streamType match {
       case param: ParameterizedType if param.getRawType == classOf[Source[_, _]] =>
         val messageType = param.getActualTypeArguments()(0)
-        Some(new UnresolvedStreamedMessageSerializer[Any](messageType).asInstanceOf[MessageSerializer[T, _]])
+        Some(new UnresolvedStreamedMessageSerializer[Any](messageType).asInstanceOf[CoreMessageSerializer[T, _]])
       case _ => None
     }
   }
 
-  private def registeredMessageSerializerFor[T](messageType: Type): Option[MessageSerializer[T, _]] = {
-    messageSerializers.get(messageType).asInstanceOf[Option[MessageSerializer[T, _]]] orElse {
+  private def registeredMessageSerializerFor[T](messageType: Type): Option[CoreMessageSerializer[T, _]] = {
+    messageSerializers.get(messageType).asInstanceOf[Option[CoreMessageSerializer[T, _]]] orElse {
       messageType match {
         case param: ParameterizedType => registeredMessageSerializerFor[T](param.getRawType)
         case clazz: Class[_]          => None

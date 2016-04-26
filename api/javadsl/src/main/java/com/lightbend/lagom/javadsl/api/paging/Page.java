@@ -3,52 +3,54 @@
  */
 package com.lightbend.lagom.javadsl.api.paging;
 
-import java.util.Optional;
+import java.util.OptionalInt;
+
+import scala.compat.java8.OptionConverters;
+
+import com.lightbend.lagom.internal.api.paging.CorePage;
 
 /**
  * A page object, use to capture paging information.
  */
-public class Page {
-    private final Optional<Integer> pageNo;
-    private final Optional<Integer> pageSize;
+public final class Page {
+  private final CorePage delegate;
 
-    public Page(Optional<Integer> pageNo, Optional<Integer> pageSize) {
-        this.pageNo = pageNo;
-        this.pageSize = pageSize;
-    }
+  private Page(CorePage delegate) {
+    this.delegate = delegate;
+  }
 
-    public Optional<Integer> pageNo() {
-        return pageNo;
-    }
+  public Page(OptionalInt pageNo, OptionalInt pageSize) {
+    this(CorePage.apply(OptionConverters.toScala(pageNo), OptionConverters.toScala(pageSize)));
+  }
 
-    public Optional<Integer> pageSize() {
-        return pageSize;
-    }
+  public OptionalInt pageNo() {
+    return this.delegate.pageNo().asPrimitive();
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+  public OptionalInt pageSize() {
+    return this.delegate.pageSize().asPrimitive();
+  }
 
-        Page page = (Page) o;
+  @Override
+  public boolean equals(Object o) {
+    if (this == o)
+      return true;
+    if (o == null || getClass() != o.getClass())
+      return false;
 
-        if (!pageNo.equals(page.pageNo)) return false;
-        return pageSize.equals(page.pageSize);
+    Page page = (Page) that;
 
-    }
+    return delegate.equals(that.delegate);
 
-    @Override
-    public int hashCode() {
-        int result = pageNo.hashCode();
-        result = 31 * result + pageSize.hashCode();
-        return result;
-    }
+  }
 
-    @Override
-    public String toString() {
-        return "Page{" +
-                "pageNo=" + pageNo +
-                ", pageSize=" + pageSize +
-                '}';
-    }
+  @Override
+  public int hashCode() {
+    return delegate.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return delegate.toString();
+  }
 }

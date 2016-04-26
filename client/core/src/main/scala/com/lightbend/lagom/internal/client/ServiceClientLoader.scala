@@ -12,13 +12,13 @@ import com.lightbend.lagom.javadsl.jackson.{ JacksonExceptionSerializer, Jackson
 import play.api.Environment
 
 @Singleton
-class ServiceClientLoader @Inject() (
-  jacksonSerializerFactory:   JacksonSerializerFactory,
-  jacksonExceptionSerializer: JacksonExceptionSerializer, environment: Environment,
+class CoreServiceClientLoader @Inject() (
+  serializerFactory:   CoreSerializerFactory,
+  exceptionSerializer: CoreExceptionSerializer, environment: Environment,
   implementor: ServiceClientImplementor
 ) {
   def loadServiceClient[T](interface: Class[T]): T = {
-    if (classOf[Service].isAssignableFrom(interface)) {
+    if (classOf[CoreService].isAssignableFrom(interface)) {
       val descriptor = ServiceReader.readServiceDescriptor(
         environment.classLoader,
         interface.asSubclass(classOf[Service])

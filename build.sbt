@@ -224,7 +224,10 @@ lazy val `api-core` = CoreLibProject("api")
       "org.scala-lang.modules" %% "scala-java8-compat" % "0.8.0-RC1",
       "com.typesafe.akka" %% "akka-stream" % AkkaVersion,
       "com.typesafe.akka" %% "akka-slf4j" % AkkaVersion,
-      "org.pcollections" % "pcollections" % "2.1.2"
+      "org.pcollections" % "pcollections" % "2.1.2",
+      // needed because we use play.utils.UriEncoding
+      "com.typesafe.play" %% "play" % PlayVersion,
+      "net.jodah" % "typetools" % "0.4.4"
     )
   )
   .dependsOn(spi)

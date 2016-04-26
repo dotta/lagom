@@ -6,5 +6,5 @@ package com.lightbend.lagom.internal.api.deser
 trait CoreIdSerializer[Id] {
   def serialize(id: Id): CoreRawId
   def deserialize(rawId: CoreRawId): Id
-  def numPathParamsHint: Option[Int]
+  def numPathParamsHint: Option[Int] = Option.empty
 }

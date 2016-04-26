@@ -39,6 +39,7 @@ import com.lightbend.lagom.spi.CircuitBreakerId
 import com.lightbend.lagom.api.transport.{ Method => TransportMethod }
 import com.lightbend.lagom.internal.api.transport.InternalRequestHeader
 import com.lightbend.lagom.internal.api.transport.InternalResponseHeader
+import com.lightbend.lagom.internal.client.CircuitBreaker
 
 /**
  * Implements a service client.

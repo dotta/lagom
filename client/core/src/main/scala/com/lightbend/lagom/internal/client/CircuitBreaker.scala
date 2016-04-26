@@ -24,8 +24,10 @@ import com.lightbend.lagom.spi.CircuitBreakerId
 import com.typesafe.config.Config
 import javax.inject.Inject
 import javax.inject.Singleton
-import akka.pattern.{CircuitBreaker => AkkaCircuitBreaker}
-import java.util.function.{Function => JFunction}
+import akka.pattern.{ CircuitBreaker => AkkaCircuitBreaker }
+import java.util.function.{ Function => JFunction }
+import akka.pattern.{ CircuitBreaker => AkkaCircuitBreaker }
+import java.util.function.{ Function => JFunction }
 
 object CircuitBreaker {
   private final case class CircuitBreakerHolder(breaker: AkkaCircuitBreaker, metrics: CircuitBreakerMetrics)

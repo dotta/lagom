@@ -7,8 +7,7 @@ import java.util.Optional;
 
 import com.lightbend.lagom.api.transport.GenericMessageProtocol;
 import com.lightbend.lagom.internal.api.transport.CoreMessageProtocol;
-
-import scala.compat.java8.OptionConverters;
+import com.lightbend.lagom.internal.api.transport.InternalMessageProtocol;
 
 /**
  * A message protocol.
@@ -45,13 +44,7 @@ import scala.compat.java8.OptionConverters;
  * <tt>MessageProtocol</tt> instances can also be used in content negotiation,
  * an empty value means that any value is accepted.
  */
-public final class MessageProtocol implements GenericMessageProtocol {
-
-  final CoreMessageProtocol delegate;
-
-  MessageProtocol(CoreMessageProtocol delegate) {
-    this.delegate = delegate;
-  }
+public interface MessageProtocol implements GenericMessageProtocol {
 
   /**
    * Create a message protocol with the given content type, charset and version.
@@ -63,110 +56,16 @@ public final class MessageProtocol implements GenericMessageProtocol {
    * @param version
    *          The version.
    */
-  public MessageProtocol(Optional<String> contentType, Optional<String> charset, Optional<String> version) {
-    this(CoreMessageProtocol.of(contentType, charset, version));
+  public static MessageProtocol of(Optional<String> contentType, Optional<String> charset, Optional<String> version) {
+    new InternalMessageProtocol(CoreMessageProtocol.of(contentType, charset, version));
   }
 
   /**
    * Create a message protocol that doesn't specify any content type, charset or
    * version.
    */
-  public MessageProtocol() {
-    this(Optional.empty(), Optional.empty(), Optional.empty());
-  }
-
-  /**
-   * The content type of the protocol.
-   *
-   * @return The content type.
-   */
-  public Optional<String> contentType() {
-    return OptionConverters.toJava(delegate.contentType());
-  }
-
-  /**
-   * The charset of the protocol.
-   *
-   * @return The charset.
-   */
-  public Optional<String> charset() {
-    return OptionConverters.toJava(delegate.charset());
-  }
-
-  /**
-   * The version of the protocol.
-   *
-   * @return The version.
-   */
-  public Optional<String> version() {
-    return OptionConverters.toJava(delegate.version());
-  }
-
-  /**
-   * Return a copy of this message protocol with the content type set to the
-   * given content type.
-   *
-   * @param contentType
-   *          The content type to set.
-   * @return A copy of this message protocol.
-   */
-  public MessageProtocol withContentType(String contentType) {
-    return new MessageProtocol(delegate.withContentType(contentType));
-  }
-
-  /**
-   * Return a copy of this message protocol with the charset set to the given
-   * charset.
-   *
-   * @param charset
-   *          The charset to set.
-   * @return A copy of this message protocol.
-   */
-  public MessageProtocol withCharset(String charset) {
-    return new MessageProtocol(delegate.withCharset(charset));
-  }
-
-  /**
-   * Return a copy of this message protocol with the version set to the given
-   * version.
-   *
-   * @param version
-   *          The version to set.
-   * @return A copy of this message protocol.
-   */
-  public MessageProtocol withVersion(String version) {
-    return new MessageProtocol(delegate.withVersion(version));
-  }
-
-  /**
-   * Whether this message protocol is a text based protocol.
-   *
-   * This is determined by whether the charset is defined.
-   *
-   * @return true if this message protocol is text based.
-   */
-  public boolean isText() {
-    return delegate.isText();
-  }
-
-  /**
-   * Whether the protocol uses UTF-8.
-   *
-   * @return true if the charset used by this protocol is UTF-8, false if it's
-   *         some other encoding or if no charset is defined.
-   */
-  public boolean isUtf8() {
-    return delegate.isUtf8();
-  }
-
-  /**
-   * Convert this message protocol to a content type header, if the content type
-   * is defined.
-   *
-   * @return The message protocol as a content type header.
-   */
-  public Optional<String> toContentTypeHeader() {
-    return OptionConverters.toJava(delegate.contentTypeHeader());
+  public static MessageProtocol of() {
+    of(Optional.empty(), Optional.empty(), Optional.empty());
   }
 
   /**
@@ -179,27 +78,82 @@ public final class MessageProtocol implements GenericMessageProtocol {
   public static MessageProtocol fromContentTypeHeader(Optional<String> contentType) {
     CoreMessageProtocol delegate = CoreMessageProtocol
         .fromContentTypeHeader(OptionConverters.toScala(contentType));
-    return new MessageProtocol(delegate);
+    return new InternalMessageProtocol(delegate);
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (!(o instanceof MessageProtocol))
-      return false;
+  /**
+   * The content type of the protocol.
+   *
+   * @return The content type.
+   */
+  Optional<String> contentType();
 
-    MessageProtocol that = (MessageProtocol) o;
-    return delegate.equals(that.delegate);
-  }
+  /**
+   * The charset of the protocol.
+   *
+   * @return The charset.
+   */
+  Optional<String> charset();
 
-  @Override
-  public int hashCode() {
-    return delegate.hashCode();
-  }
+  /**
+   * The version of the protocol.
+   *
+   * @return The version.
+   */
+  Optional<String> version();
 
-  @Override
-  public String toString() {
-    return delegate.toString();
-  }
+  /**
+   * Return a copy of this message protocol with the content type set to the
+   * given content type.
+   *
+   * @param contentType
+   *          The content type to set.
+   * @return A copy of this message protocol.
+   */
+  MessageProtocol withContentType(String contentType);
+
+  /**
+   * Return a copy of this message protocol with the charset set to the given
+   * charset.
+   *
+   * @param charset
+   *          The charset to set.
+   * @return A copy of this message protocol.
+   */
+  MessageProtocol withCharset(String charset);
+
+  /**
+   * Return a copy of this message protocol with the version set to the given
+   * version.
+   *
+   * @param version
+   *          The version to set.
+   * @return A copy of this message protocol.
+   */
+  MessageProtocol withVersion(String version);
+
+  /**
+   * Whether this message protocol is a text based protocol.
+   *
+   * This is determined by whether the charset is defined.
+   *
+   * @return true if this message protocol is text based.
+   */
+  boolean isText();
+
+  /**
+   * Whether the protocol uses UTF-8.
+   *
+   * @return true if the charset used by this protocol is UTF-8, false if it's
+   *         some other encoding or if no charset is defined.
+   */
+  boolean isUtf8();
+
+  /**
+   * Convert this message protocol to a content type header, if the content type
+   * is defined.
+   *
+   * @return The message protocol as a content type header.
+   */
+  Optional<String> toContentTypeHeader();
 }

@@ -5,8 +5,6 @@ package com.lightbend.lagom.internal.api
 
 import java.lang.invoke.MethodHandles
 import java.lang.reflect.{ InvocationHandler, Method, ParameterizedType, Proxy => JProxy, Type }
-import java.util.Optional
-
 import com.google.common.reflect.TypeToken
 import com.lightbend.lagom.javadsl.api._
 import com.lightbend.lagom.javadsl.api.Descriptor.{ RestCallId, PathCallId, NamedCallId, Call }
@@ -15,16 +13,19 @@ import com.lightbend.lagom.javadsl.api.deser._
 import com.lightbend.lagom.javadsl.api.paging.Page
 import akka.NotUsed
 import org.pcollections.TreePVector
-
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
+import akka.NotUsed
+import com.lightbend.lagom.javadsl.api.paging.Page
+import java.lang.invoke.MethodHandles.Lookup
+import java.lang.reflect.{ Proxy => JProxy }
 
 /**
  * Reads a service interface
  */
-object ServiceReader {
+class JavaServiceReader extends ServiceReader {
 
-  final val DescriptorMethodName = "descriptor"
+  private final val DescriptorMethodName = "descriptor"
 
   /**
    * In order to invoke default methods of a proxy in Java 8 reflectively, we need to create a MethodHandles.Lookup
@@ -35,15 +36,15 @@ object ServiceReader {
     methodHandlesLookupConstructor.setAccessible(true)
   }
 
-  def readServiceDescriptor(classLoader: ClassLoader, serviceInterface: Class[_ <: Service]): Descriptor = {
+  override def readServiceDescriptor(classLoader: ClassLoader, serviceInterface: Class[_ <: Service]): CoreDescriptor = {
     val invocationHandler = new ServiceInvocationHandler(serviceInterface)
     val serviceStub = JProxy.newProxyInstance(classLoader, Array(serviceInterface), invocationHandler).asInstanceOf[Service]
     serviceStub.descriptor()
   }
 
-  def resolveServiceDescriptor(descriptor: Descriptor, classLoader: ClassLoader,
-                               builtInSerializerFactories:  Map[PlaceholderSerializerFactory, SerializerFactory],
-                               builtInExceptionSerializers: Map[PlaceholderExceptionSerializer, ExceptionSerializer]): Descriptor = {
+  def resolveServiceDescriptor(descriptor: CoreDescriptor, classLoader: ClassLoader,
+                               builtInSerializerFactories:  Map[PlaceholderSerializerFactory, CoreSerializerFactory],
+                               builtInExceptionSerializers: Map[PlaceholderExceptionSerializer, CoreExceptionSerializer]): CoreDescriptor = {
 
     val builtInIdSerializers: Map[Type, IdSerializer[_]] = Map(
       classOf[String] -> IdSerializers.STRING,

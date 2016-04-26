@@ -215,7 +215,7 @@ object CoreDescriptor {
    * This is an abstract representation of how a service call is addressed within a service.  For example, in the
    * case of REST APIs, it will be addressed using an HTTP method and path.
    */
-  abstract class CallId protected ()
+  sealed abstract class CallId
 
   /**
    * A REST call ID.

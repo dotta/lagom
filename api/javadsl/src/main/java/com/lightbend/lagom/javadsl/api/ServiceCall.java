@@ -26,6 +26,7 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface ServiceCall<Id, Request, Response> {
 
+  
     /**
      * Invoke the service call.
      *

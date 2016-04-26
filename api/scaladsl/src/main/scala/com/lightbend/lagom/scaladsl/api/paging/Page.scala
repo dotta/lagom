@@ -3,19 +3,30 @@
  */
 package com.lightbend.lagom.scaladsl.api.paging
 
+import com.lightbend.lagom.internal.api.paging.CorePage
+
 /**
  * Captures paging information.
  */
-sealed trait Page {
-  def pageNo: Option[Int]
-  def pageSize: Option[Int]
+final class Page private (private val delegate: CorePage) {
+  def pageNo: Option[Int] = delegate.pageNo
+  def pageSize: Option[Int] = delegate.pageSize
+
+  override def equals(that: Any): Boolean = {
+    if (this == that) true
+    else that match {
+      case that: Page => delegate == that.delegate
+      case _          => false
+    }
+  }
+
+  override def hashCode: Int = delegate.hashCode
+  override def toString: String = delegate.toString
 }
 
 object Page {
   /**
    * Factory method for creating `Page` instances.
    */
-  def apply(pageNo: Option[Int], pageSize: Option[Int]): Page = PageImpl(pageNo, pageSize)
-
-  private[this] case class PageImpl(pageNo: Option[Int], pageSize: Option[Int]) extends Page
+  def apply(pageNo: Option[Int], pageSize: Option[Int]): Page = new Page(CorePage(pageNo, pageSize))
 }

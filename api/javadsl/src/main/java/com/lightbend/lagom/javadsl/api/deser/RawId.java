@@ -3,21 +3,19 @@
  */
 package com.lightbend.lagom.javadsl.api.deser;
 
+import java.util.Optional;
+
 import org.pcollections.HashTreePMap;
 import org.pcollections.PMap;
 import org.pcollections.PSequence;
 import org.pcollections.TreePVector;
 
 import com.lightbend.lagom.internal.api.deser.CoreRawId;
+import com.lightbend.lagom.internal.api.deser.InternalRawId;
 import com.lightbend.lagom.internal.converter.Collection;
 
 import scala.Option;
 import scala.compat.java8.OptionConverters;
-import scala.compat.java8.ScalaStreamSupport;
-
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A raw ID.
@@ -44,12 +42,12 @@ import java.util.stream.Stream;
  *
  * Raw ids are what {@link IdSerializer} uses to convert the extracted path information into an Id type, and back.
  */
-public final class RawId {
+public interface RawId {
 
     /**
      * An empty RawId.
      */
-    public static final RawId EMPTY = new RawId(CoreRawId.Empty());
+    public static final RawId EMPTY = new InternalRawId(CoreRawId.Empty());
 
     /**
      * A path parameter.
@@ -126,11 +124,6 @@ public final class RawId {
         }
     }
 
-    private final CoreRawId delegate;
-
-    private RawId(CoreRawId delegate) {
-        this.delegate = delegate;
-    }
 
     /**
      * Get the path parameters for the ID.
@@ -139,18 +132,14 @@ public final class RawId {
      *
      * @return The path parameters.
      */
-    public PSequence<PathParam> pathParams() {
-      return Collection.map(delegate.pathParams(), PathParam::new);
-    }
+    public PSequence<PathParam> pathParams();
 
     /**
      * Get the query parameters for the ID.
      *
      * @return The query parameters.
      */
-    public PMap<String, PSequence<String>> queryParams() {
-        return Collection.asPCollection(delegate.queryParams());
-    }
+    public PMap<String, PSequence<String>> queryParams();
 
     /**
      * Get the path parameter with the given <code>name</code>.
@@ -158,28 +147,14 @@ public final class RawId {
      * @param name The name of the path parameter.
      * @return The path parameter, if it exists, otherwise empty.
      */
-    public Optional<String> pathParam(String name) {
-        return pathParams().stream()
-                .filter(p -> p.name().map(name::equals).orElse(false))
-                .findFirst()
-                .map(PathParam::value);
-    }
-
+    public Optional<String> pathParam(String name);
     /**
      * Get a query string parameter with the given <code>name</code>.
      *
      * @param name The name of the query parameter.
      * @return The query string parameter, if it can be found, otherwise empty.
      */
-    public Optional<String> queryParam(String name) {
-        return Optional.ofNullable(queryParams().get(name)).flatMap(p -> {
-                if (p.isEmpty()) {
-                    return Optional.empty();
-                } else {
-                    return Optional.of(p.get(0));
-                }
-        });
-    }
+    public Optional<String> queryParam(String name);
 
     /**
      * Add the given query parameter.
@@ -188,9 +163,7 @@ public final class RawId {
      * @param values The values for the query parameter.
      * @return A new RawId with the added query parameter.
      */
-    public RawId withQueryParam(String name, PSequence<String> values) {
-        return new RawId(delegate.withQueryParam(name, Collection.asScala(values)));
-    }
+    public RawId withQueryParam(String name, PSequence<String> values);
 
     /**
      * Add the given query parameter.
@@ -199,9 +172,7 @@ public final class RawId {
      * @param value The value for the query parameter.
      * @return A new RawId with the added query parameter.
      */
-    public RawId withQueryParam(String name, Optional<String> value) {
-        return new RawId(delegate.withQueryParam(name, OptionConverters.toScala(value)));
-    }
+    public RawId withQueryParam(String name, Optional<String> value);
 
     /**
      * Add the given query parameter.
@@ -210,9 +181,7 @@ public final class RawId {
      * @param value The value of the query parameter.
      * @return A new RawId with the added query parameter.
      */
-    public RawId withQueryParam(String name, String value) {
-        return withQueryParam(name, TreePVector.singleton(value));
-    }
+    public RawId withQueryParam(String name, String value);
 
     /**
      * Add the given path parameter.
@@ -221,9 +190,7 @@ public final class RawId {
      * @param value The value of the path parameter.
      * @return A new RawId with the added path parameter.
      */
-    public RawId withPathParam(String name, String value) {
-        return new RawId(delegate.withPathParam(name, value));
-    }
+    public RawId withPathParam(String name, String value);
 
     /**
      * Add the given path parameter value.
@@ -231,9 +198,7 @@ public final class RawId {
      * @param value The value of the path parameter.
      * @return A new RawId with the added path parameter.
      */
-    public RawId withPathValue(String value) {
-        return new RawId(delegate.withPathValue(value));
-    }
+    public RawId withPathValue(String value);
 
     /**
      * Create a new raw ID from the given path parameters and query parameters.
@@ -243,7 +208,7 @@ public final class RawId {
      * @return The raw ID.
      */
     public static RawId of(PSequence<PathParam> pathParams, PMap<String, PSequence<String>> queryParams) {
-        return new RawId(CoreRawId.apply(Collection.map(pathParams, p -> p.delegate), Collection.asScala(queryParams)));
+        return new InternalRawId(CoreRawId.apply(Collection.map(pathParams, p -> p.delegate), Collection.asScala(queryParams)));
     }
 
     /**
@@ -253,7 +218,7 @@ public final class RawId {
      * @return The raw ID.
      */
     public static RawId of(PSequence<PathParam> pathParams) {
-        return RawId.of(pathParams, HashTreePMap.empty());
+        return of(pathParams, HashTreePMap.empty());
     }
 
     /**
@@ -263,7 +228,7 @@ public final class RawId {
      * @return The raw ID.
      */
     public static RawId of(PMap<String, PSequence<String>> queryParams) {
-        return RawId.of(TreePVector.empty(), queryParams);
+        return of(TreePVector.empty(), queryParams);
     }
 
     /**
@@ -278,26 +243,5 @@ public final class RawId {
             params = params.plus(PathParam.of(value));
         }
         return of(params);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        RawId that = (RawId) o;
-
-        return delegate.equals(that.delegate);
-
-    }
-
-    @Override
-    public int hashCode() {
-        return delegate.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return delegate.toString();
     }
 }

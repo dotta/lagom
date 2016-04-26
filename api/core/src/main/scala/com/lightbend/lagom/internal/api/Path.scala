@@ -5,15 +5,18 @@ package com.lightbend.lagom.internal.api
 
 import java.util.regex.Pattern
 
-import akka.util.ByteString
-import com.lightbend.lagom.javadsl.api.Descriptor.{ CallId, NamedCallId, PathCallId, RestCallId }
-import com.lightbend.lagom.javadsl.api.deser.RawId.PathParam
-import com.lightbend.lagom.javadsl.api.deser.{ RawId, RawIdDescriptor }
-import org.pcollections.{ PSequence, PMap, HashTreePMap, TreePVector }
-import play.utils.UriEncoding
-
-import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 import scala.util.parsing.combinator.JavaTokenParsers
+
+import com.lightbend.lagom.internal.api.CoreDescriptor.CallId
+import com.lightbend.lagom.internal.api.CoreDescriptor.NamedCallId
+import com.lightbend.lagom.internal.api.CoreDescriptor.PathCallId
+import com.lightbend.lagom.internal.api.CoreDescriptor.RestCallId
+import com.lightbend.lagom.internal.api.deser.CoreRawId
+import com.lightbend.lagom.internal.api.deser.CoreRawId.PathParam
+
+import akka.util.ByteString
+import play.utils.UriEncoding
 
 case class Path(parts: Seq[PathPart], queryParams: Seq[String]) {
   val regex = parts.map(_.expression).mkString.r
@@ -21,42 +24,33 @@ case class Path(parts: Seq[PathPart], queryParams: Seq[String]) {
     case dyn: DynamicPathPart => dyn
   }
 
-  def extract(path: String, query: Map[String, Seq[String]]): Option[RawId] = {
+  def extract(path: String, query: Map[String, Seq[String]]): Option[CoreRawId] = {
     regex.unapplySeq(path).map { partValues =>
-      val pathParams = TreePVector.from(dynamicParts.zip(partValues).map {
+      val pathParams = dynamicParts.zip(partValues).map {
         case (part, value) =>
           val decoded = if (part.encoded) {
             UriEncoding.decodePathSegment(value, ByteString.UTF_8)
           } else value
-          PathParam.of(part.name, decoded)
-      }.asJava)
-      val qps: PMap[String, PSequence[String]] = HashTreePMap.from(queryParams.map { paramName =>
-        paramName -> TreePVector.from(query.getOrElse(paramName, Nil).asJava)
-      }.toMap.asJava)
-      RawId.of(pathParams, qps)
+          PathParam(part.name, decoded)
+      }
+      CoreRawId(pathParams, query)
     }
   }
 
-  def format(rawId: RawId): (String, Map[String, Seq[String]]) = {
-    val (resultPathParts, _) = parts.foldLeft((Seq.empty[String], rawId.pathParams().asScala.toSeq)) {
+  def format(rawId: CoreRawId): (String, Map[String, Seq[String]]) = {
+    val (resultPathParts, _) = parts.foldLeft((Seq.empty[String], rawId.pathParams)) {
       case ((pathParts, params), StaticPathPart(path)) => (pathParts :+ path, params)
       case ((pathParts, params), DynamicPathPart(name, _, encoded)) =>
         val encodedValue = params.headOption match {
           case Some(value) =>
-            if (encoded) {
-              UriEncoding.encodePathSegment(value.value, ByteString.UTF_8)
-            } else {
-              value.value
-            }
+            if (encoded) UriEncoding.encodePathSegment(value.value, ByteString.UTF_8)
+            else value.value
           case None => throw new IllegalArgumentException("RawId does not contain required path param name: " + name)
         }
         (pathParts :+ encodedValue, params.tail)
     }
     val path = resultPathParts.mkString
-    val queryParams = rawId.queryParams().asScala.collect {
-      case (name, values) if !values.isEmpty =>
-        name -> values.asScala.toSeq
-    }.toMap
+    val queryParams = for ((name, values) <- rawId.queryParams if values.nonEmpty) yield name -> values
     path -> queryParams
   }
 

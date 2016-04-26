@@ -23,6 +23,10 @@ import org.pcollections.{ HashTreePMap, TreePVector }
 import org.scalatest._
 import scala.collection.JavaConverters._
 import akka.NotUsed
+import com.lightbend.lagom.internal.api.ServiceReader
+import com.lightbend.lagom.internal.api.UnresolvedMessageTypeSerializer
+import com.lightbend.lagom.internal.api.JacksonPlaceholderSerializerFactory
+import com.lightbend.lagom.internal.api.JacksonPlaceholderExceptionSerializer
 
 class ServiceReaderSpec extends WordSpec with Matchers with Inside {
 
