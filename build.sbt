@@ -14,6 +14,7 @@ val AkkaPersistenceCassandraVersion = "0.13"
 val ScalaTestVersion = "2.2.4"
 val JacksonVersion = "2.7.2"
 val CassandraAllVersion = "3.0.2"
+val KafkaVersion = "0.10.0.0"
 
 val scalaTest = "org.scalatest" %% "scalatest" % ScalaTestVersion
 
@@ -172,6 +173,8 @@ val apiProjects = Seq[ProjectReference](
   client,
   cluster,
   pubsub,
+  `message-broker`,
+  `kafka-broker`,
   persistence,
   testkit,
   logback,
@@ -409,6 +412,25 @@ lazy val persistence = (project in file("persistence"))
     )
   ) configs (MultiJvm)  
 
+lazy val `message-broker` = (project in file("message-broker"))
+  .enablePlugins(RuntimeLibPlugins)
+  .settings(name := "lagom-javadsl-message-broker")
+  .settings(runtimeLibCommon: _*)
+  .dependsOn(server)
+
+lazy val `kafka-broker` = (project in file("kafka-broker"))
+  .enablePlugins(RuntimeLibPlugins)
+  .settings(name := "lagom-javadsl-kafka-broker")
+  .settings(runtimeLibCommon: _*)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
+      "com.typesafe.akka" %% "akka-stream-kafka" % "0.11-M4" exclude("org.slf4j","slf4j-log4j12"),
+      "org.apache.kafka" %% "kafka" % KafkaVersion exclude("org.slf4j","slf4j-log4j12") exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
+    )
+  )
+  .dependsOn(`message-broker`, client % "optional")
+
 lazy val logback = (project in file("logback"))
   .enablePlugins(RuntimeLibPlugins)
   .settings(runtimeLibCommon: _*)
@@ -424,7 +446,7 @@ lazy val `dev-environment` = (project in file("dev"))
   .settings(name := "lagom-dev")
   .settings(common: _*)
   .enablePlugins(AutomateHeaderPlugin)
-  .aggregate(`build-link`, `reloadable-server`, `sbt-plugin`, `service-locator`, `service-registration`, `cassandra-server`, `cassandra-registration`,  `play-integration`, `service-registry-client`)
+  .aggregate(`build-link`, `reloadable-server`, `sbt-plugin`, `service-locator`, `service-registration`, `cassandra-server`, `cassandra-registration`,  `play-integration`, `service-registry-client`, `kafka-server`)
   .settings(
     publish := {},
     PgpKeys.publishSigned := {}
@@ -562,5 +584,23 @@ lazy val `cassandra-server` = (project in file("dev") / "cassandra-server")
         exclude("io.netty", "netty-all") exclude("io.netty", "netty-handler") exclude("io.netty", "netty-buffer")
         exclude("io.netty", "netty-common") exclude("io.netty", "netty-transport") exclude("io.netty", "netty-codec"),
       "org.apache.cassandra" % "cassandra-all" % CassandraAllVersion
+    )
+  )
+
+lazy val `kafka-server` = (project in file("dev") / "kafka-server")
+  .settings(name := "lagom-kafka-server")
+  .settings(runtimeLibCommon: _*)
+  .enablePlugins(RuntimeLibPlugins)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.apache.kafka" %% "kafka" % KafkaVersion,
+      "org.apache.zookeeper" % "zookeeper" % "3.3.4",
+      // Note that curator 3.x is only compatible with zookeper 3.5.x, and that's why 
+      // we are using curator 2.x here (see the notice in http://curator.apache.org/index.html
+      // - make sure to scroll to the bottom)
+      "org.apache.curator" % "curator-framework" % "2.10.0",
+      "org.apache.curator" % "curator-test" % "2.10.0",
+      scalaTest % Test,
+      "org.apache.kafka" % "kafka-clients" % KafkaVersion % Test
     )
   )

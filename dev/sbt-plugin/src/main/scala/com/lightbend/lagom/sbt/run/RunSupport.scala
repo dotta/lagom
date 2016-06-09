@@ -27,7 +27,7 @@ import scala.collection.JavaConverters._
 private[sbt] object RunSupport {
 
   def reloadRunTask(
-    extraConfigs: Map[String, String]
+    extraConfigs: Map[String, Any]
   ): Def.Initialize[Task[Reloader.DevServer]] = Def.task {
 
     val state = Keys.state.value
@@ -54,7 +54,7 @@ private[sbt] object RunSupport {
   }
 
   def nonReloadRunTask(
-    extraConfigs: Map[String, String]
+    extraConfigs: Map[String, Any]
   ): Def.Initialize[Task[Reloader.DevServer]] = Def.task {
 
     val classpath = (devModeDependencies.value ++ (fullClasspath in Runtime).value).distinct
@@ -78,7 +78,10 @@ private[sbt] object RunSupport {
         else null // this means nothing to reload
       }
       override def projectPath(): File = baseDirectory.value
-      override def settings(): util.Map[String, String] = buildLinkSettings
+      // FIXME: Change Play BuildLink#settings return type to util.Map[String, AnyRef] (so that I don't need to have a custom crafted settings2 method)
+      //        Having AnyRef as the second value of the Map allows to inject arrays of values.
+      override def settings(): util.Map[String, String] = ???
+      def settings2(): util.Map[String, Any] = buildLinkSettings
       override def forceReload(): Unit = ()
       override def findSource(className: String, line: Integer): Array[AnyRef] = null
     }

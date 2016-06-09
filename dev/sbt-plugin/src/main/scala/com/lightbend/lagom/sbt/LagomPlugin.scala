@@ -230,7 +230,7 @@ object LagomPlugin extends AutoPlugin {
     val lagomServicesPortRange = settingKey[PortRange]("Port range used to assign a port to each Lagom service in the build")
 
     val lagomFileWatchService = settingKey[FileWatchService]("The file watch service to use")
-    val lagomDevSettings = settingKey[Seq[(String, String)]]("Settings that should be passed to a Lagom app in dev mode")
+    val lagomDevSettings = settingKey[Seq[(String, Any)]]("Settings that should be passed to a Lagom app in dev mode")
     val lagomServicePort = settingKey[Int]("The port that the Lagom service should run on")
 
     // service locator tasks and settings
@@ -243,14 +243,23 @@ object LagomPlugin extends AutoPlugin {
     val lagomServiceLocatorStop = taskKey[Unit]("Stop the service locator")
 
     // cassandra tasks and settings
-    val lagomCassandraStart = taskKey[Unit]("Start the Cassandra service")
-    val lagomCassandraStop = taskKey[Unit]("Stop the Cassandra service")
-    val lagomCassandraPort = settingKey[Int]("Port used by the cassandra server")
+    val lagomCassandraStart = taskKey[Unit]("Start the local cassandra server")
+    val lagomCassandraStop = taskKey[Unit]("Stop the local cassandra server")
+    val lagomCassandraPort = settingKey[Int]("Port used by the local cassandra server")
     val lagomCassandraEnabled = settingKey[Boolean]("Enable/Disable the cassandra server")
-    val lagomCassandraCleanOnStart = settingKey[Boolean]("Wipe the database files before starting")
-    val lagomCassandraKeyspace = settingKey[String]("Cassandra keyspace used by this Lagom service")
-    val lagomCassandraJvmOptions = settingKey[Seq[String]]("JVM options used by the forked Cassandra process")
-    val lagomCassandraMaxBootWaitingTime = settingKey[FiniteDuration]("Max waiting time to start Cassandra")
+    val lagomCassandraCleanOnStart = settingKey[Boolean]("Wipe the cassandra database before starting")
+    val lagomCassandraKeyspace = settingKey[String]("Cassandra keyspace used by a Lagom service")
+    val lagomCassandraJvmOptions = settingKey[Seq[String]]("JVM options used by the forked cassandra process")
+    val lagomCassandraMaxBootWaitingTime = settingKey[FiniteDuration]("Max waiting time to start cassandra")
+
+    // kafka tasks and settings
+    val lagomKafkaStart = taskKey[Unit]("Start the local kafka server")
+    val lagomKafkaStop = taskKey[Unit]("Stop the local kafka server")
+    val lagomKafkaPropertiesFile = settingKey[Option[File]]("Properties file used by the local kafka server (file's location is relative to the project's root)")
+    val lagomKafkaEnabled = settingKey[Boolean]("Enable/Disable the kafka server")
+    val lagomKafkaJvmOptions = settingKey[Seq[String]]("JVM options used by the forked kafka process")
+    val lagomKafkaZookeperPort = settingKey[Int]("Port used by the local zookeper server (kafka requires zookeeper)")
+    val lagomKafkaMaxBootWaitingTime = settingKey[FiniteDuration]("Max waiting time to start kafka")
 
     /** Allows to integrate an external Lagom project in the current build, so that when runAll is run, this service is also started.*/
     def lagomExternalProject(name: String, module: ModuleID): Project =
@@ -288,8 +297,17 @@ object LagomPlugin extends AutoPlugin {
     lagomCassandraStop in ThisBuild := Servers.CassandraServer.tryStop(state.value.log)
   ))
 
+  private val kafkaServerProject = Project("lagom-internal-meta-project-kafka", file("."),
+    configurations = Configurations.default,
+    settings = CorePlugin.projectSettings ++ IvyPlugin.projectSettings ++ JvmPlugin.projectSettings ++ Seq(
+    scalaVersion := "2.11.7",
+    libraryDependencies += LagomImport.component("lagom-kafka-server"),
+    lagomKafkaStart in ThisBuild := startKafkaServerTask.value,
+    lagomKafkaStop in ThisBuild := Servers.KafkaServer.tryStop(state.value.log)
+  ))
+
   override def globalSettings = Seq(
-    onLoad := onLoad.value andThen PortAssigner.computeProjectsPort((lagomServicesPortRange in ThisBuild).value) andThen DynamicProjectAdder.addProjects(serviceLocatorProject, cassandraProject)
+    onLoad := onLoad.value andThen PortAssigner.computeProjectsPort((lagomServicesPortRange in ThisBuild).value) andThen DynamicProjectAdder.addProjects(serviceLocatorProject, cassandraProject, kafkaServerProject)
   )
 
   private def dontAggregate(keys: Scoped*): Seq[Setting[_]] = keys.map(aggregate in _ := false)
@@ -299,13 +317,18 @@ object LagomPlugin extends AutoPlugin {
     lagomServicesPortRange := PortRange(20000, 30000),
     lagomServiceLocatorEnabled := true,
     lagomServiceLocatorPort := 8000,
+    lagomServiceGatewayPort := 9000,
     lagomServiceLocatorUrl := s"http://localhost:${lagomServiceLocatorPort.value}",
     lagomCassandraEnabled := true,
     lagomCassandraPort := 4000, // If you change the default make sure to also update the play/reference-overrides.conf in the persistence project
-    lagomServiceGatewayPort := 9000,
     lagomCassandraCleanOnStart := true,
     lagomCassandraJvmOptions := Seq("-Xms256m", "-Xmx1024m", "-Dcassandra.jmx.local.port=4099", "-DCassandraLauncher.configResource=dev-embedded-cassandra.yaml"),
     lagomCassandraMaxBootWaitingTime := 20.seconds,
+    lagomKafkaEnabled := true,
+    lagomKafkaPropertiesFile := None,
+    lagomKafkaZookeperPort := 2181,
+    lagomKafkaJvmOptions := Seq("-Xms256m", "-Xmx1024m"),
+    lagomKafkaMaxBootWaitingTime := 20.seconds,
     runAll <<= runServiceLocatorAndMicroservicesTask,
     Internal.Keys.interactionMode := PlayConsoleInteractionMode,
     lagomDevSettings := Nil
@@ -317,7 +340,9 @@ object LagomPlugin extends AutoPlugin {
       lagomServiceLocatorStart,
       lagomServiceLocatorStop,
       lagomCassandraStart,
-      lagomCassandraStop
+      lagomCassandraStop,
+      lagomKafkaStart,
+      lagomKafkaStop
     )
 
   override def projectSettings = Seq(
@@ -400,8 +425,37 @@ object LagomPlugin extends AutoPlugin {
     }
   }
 
+  private lazy val startKafkaServerTask = Def.taskDyn {
+    if ((lagomKafkaEnabled in ThisBuild).value) {
+      Def.task {
+        // FIXME: ZooKeeper port is editable, but the Kafka properties file should be updated accordingly ,i.e., in the Kafka server.properties, 
+        //        the port used in `zookeeper.connect` should match. We currently don't do it, so we should either fix this or not allow to 
+        //        set a different ZooKeeper port. The same applies to the Kafka port, which we may want to let users specify without having to 
+        //        provide a different server.properties file (which is currently possible via the `lagomKafkaPropertiesFile` setting). One extra 
+        //        aspect about both the Kafka port and ZooKeeper port is that they are injected in the application (see the lagom-javadsl-kafka-broker
+        //        reference.conf).
+        val zooKeeperPort = lagomKafkaZookeperPort.value
+        val kafkaPropertiesFile = lagomKafkaPropertiesFile.value
+        val classpath = (managedClasspath in Compile).value.map(_.data)
+        val jvmOptions = lagomKafkaJvmOptions.value
+        val maxWaiting = lagomKafkaMaxBootWaitingTime.value
+        val log = state.value.log
+        Servers.KafkaServer.start(log, classpath, zooKeeperPort, kafkaPropertiesFile, jvmOptions, maxWaiting)
+      }
+    } else {
+      Def.task {
+        val log = state.value.log
+        log.info(s"Kafka won't be started because the build setting `${lagomKafkaEnabled.key.label}` is set to `false`")
+      }
+    }
+  }
+
   private lazy val runServiceLocatorAndMicroservicesTask: Initialize[Task[Unit]] = Def.taskDyn {
-    Def.sequential(lagomCassandraStart, lagomServiceLocatorStart, runAllMicroservicesTask)
+    val startInfrastructure = Def.taskDyn {
+      lagomKafkaStart.value
+      Def.sequential(lagomCassandraStart, lagomServiceLocatorStart)
+    }
+    Def.sequential(startInfrastructure, runAllMicroservicesTask)
   }
 
   private def runAllMicroservicesTask: Initialize[Task[Unit]] = Def.taskDyn {
@@ -433,14 +487,14 @@ object LagomPlugin extends AutoPlugin {
     } yield projRef
   }
 
-  private lazy val serviceLocatorConfiguration: Initialize[Map[String, String]] = Def.setting {
+  private lazy val serviceLocatorConfiguration: Initialize[Map[String, AnyRef]] = Def.setting {
     if (lagomServiceLocatorEnabled.value)
       Map("lagom.service-locator.url" -> lagomServiceLocatorUrl.value)
     else
       Map.empty
   }
 
-  private lazy val cassandraServerConfiguration: Initialize[Map[String, String]] = Def.setting {
+  private lazy val cassandraServerConfiguration: Initialize[Map[String, AnyRef]] = Def.setting {
     val port = lagomCassandraPort.value.toString
     Map(
       "cassandra-journal.defaults.port" -> port,
@@ -449,7 +503,7 @@ object LagomPlugin extends AutoPlugin {
     )
   }
 
-  private lazy val actorSystemsConfig: Initialize[Map[String, String]] = Def.setting {
+  private lazy val actorSystemsConfig: Initialize[Map[String, AnyRef]] = Def.setting {
     Map(
       "lagom.akka.dev-mode.actor-system.name" -> s"${name.value}-internal-dev-mode",
       "play.akka.actor-system" -> s"${name.value}-application",
@@ -457,8 +511,22 @@ object LagomPlugin extends AutoPlugin {
     )
   }
 
-  private[sbt] lazy val managedSettings: Initialize[Map[String, String]] = Def.setting {
-    serviceLocatorConfiguration.value ++ cassandraServerConfiguration.value ++ cassandraKeyspaceConfig.value ++ actorSystemsConfig.value
+  private lazy val kafkaConfiguration: Initialize[Map[String, Any]] = Def.setting {
+    if (lagomKafkaEnabled.value) {
+      import scala.collection.JavaConverters._
+      val port = lagomKafkaZookeperPort.value
+      Map(
+        "lagom.broker.defaults.kafka.zookeeper.hosts" -> s"localhost:$port",
+        "lagom.broker.defaults.create-topics-on-startup" -> true,
+        "lagom.broker.defaults.delete-topics-on-shutdown" -> true
+      )
+    } else
+      Map.empty
+  }
+
+  private[sbt] lazy val managedSettings: Initialize[Map[String, Any]] = Def.setting {
+    serviceLocatorConfiguration.value ++ cassandraServerConfiguration.value ++
+      cassandraKeyspaceConfig.value ++ actorSystemsConfig.value ++ kafkaConfiguration.value
   }
 }
 

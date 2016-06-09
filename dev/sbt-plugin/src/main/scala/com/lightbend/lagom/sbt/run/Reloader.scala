@@ -72,7 +72,7 @@ object Reloader {
     dependencyClasspath: Classpath,
     reloadCompile: () => CompileResult, classLoaderDecorator: ClassLoader => ClassLoader,
     monitoredFiles: Seq[File], fileWatchService: FileWatchService, projectPath: File,
-    devSettings: Seq[(String, String)], httpPort: Int
+    devSettings: Seq[(String, Any)], httpPort: Int
   ): DevServer = {
     /*
      * We need to do a bit of classloader magic to run the Play application.
@@ -145,7 +145,7 @@ class Reloader(
     reloadCompile: () => CompileResult,
     baseLoader: ClassLoader,
     val projectPath: File,
-    devSettings: Seq[(String, String)],
+    devSettings: Seq[(String, Any)],
     monitoredFiles: Seq[File],
     fileWatchService: FileWatchService
 ) extends BuildLink {
@@ -240,7 +240,9 @@ class Reloader(
     }
   }
 
-  lazy val settings = {
+  override lazy val settings: java.util.Map[String, String] = ???
+
+  lazy val settings2 = {
     import scala.collection.JavaConverters._
     devSettings.toMap.asJava
   }

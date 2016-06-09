@@ -3,17 +3,17 @@
  */
 package com.lightbend.lagom.sbt.run
 
-import java.io.Closeable
+import java.io.{ Closeable, File }
 import java.net.{ URI, URL }
-import java.util.{ Map => JMap }
-
-import collection.JavaConverters._
-import java.io.File
+import java.util.{ Map => JMap, Properties }
 
 import sbt._
 import play.sbt.Colors
 
+import scala.collection.JavaConverters._
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 private[sbt] object Servers {
 
@@ -30,6 +30,20 @@ private[sbt] object Servers {
 
   abstract class ServerContainer {
     protected type Server
+
+    protected class ServerProcess(process: Process) {
+      import java.lang.Runtime
+      import scala.util.Try
+
+      private val killOnExitCallback = new Thread(new Runnable() {
+        override def run(): Unit = kill()
+      })
+
+      // Needed to make sure the spawned process is killed when the current process (i.e., the sbt console) is shut down
+      private[Servers] def enableKillOnExit(): Unit = Runtime.getRuntime.addShutdownHook(killOnExitCallback)
+      private[Servers] def disableKillOnExit(): Unit = Runtime.getRuntime.removeShutdownHook(killOnExitCallback)
+      private[Servers] def kill(): Unit = Try(process.destroy())
+    }
 
     protected var server: Server = _
 
@@ -95,25 +109,12 @@ private[sbt] object Servers {
 
   private[sbt] object CassandraServer extends ServerContainer {
     import sbt._
-    import java.lang.Runtime
-    import scala.concurrent.duration._
     import com.datastax.driver.core.Cluster
-    import scala.util.control.NonFatal
-    import scala.util.Try
     import com.lightbend.lagom.sbt.LagomPlugin
 
-    protected case class CassandraProcess(process: Process, port: Int) {
-      private val killOnExitCallback = new Thread(new Runnable() {
-        override def run(): Unit = kill()
-      })
-
+    protected case class CassandraProcess(process: Process, port: Int) extends ServerProcess(process) {
       def hostname: String = "127.0.0.1"
       def address: String = s"$hostname:$port"
-
-      // Needed to make sure the spawned process is killed when the current process (i.e., the sbt console) is shut down
-      private[CassandraServer] def enableKillOnExit(): Unit = Runtime.getRuntime.addShutdownHook(killOnExitCallback)
-      private[CassandraServer] def disableKillOnExit(): Unit = Runtime.getRuntime.removeShutdownHook(killOnExitCallback)
-      private[CassandraServer] def kill(): Unit = Try(process.destroy())
     }
 
     protected type Server = CassandraProcess
@@ -122,7 +123,6 @@ private[sbt] object Servers {
       if (server != null) log.info(s"Cassandra is running at ${server.address}")
       else {
         // see https://github.com/krasserm/akka-persistence-cassandra/blob/5efcd16bfc5a72ad277cb5687a62542f00ae8857/src/main/scala/akka/persistence/cassandra/testkit/CassandraLauncher.scala#L29-L31
-        val args = Array(port.toString, cleanOnStart.toString)
         val classpathOption = Path.makeString(cp)
         val options = Seq[String](
           "-classpath", classpathOption,
@@ -177,6 +177,42 @@ private[sbt] object Servers {
         log.info("Cassandra was already stopped")
       } else {
         log.info("Stopping cassandra")
+        try server.kill()
+        finally {
+          try server.disableKillOnExit()
+          catch {
+            case NonFatal(_) => ()
+          } finally server = null
+        }
+      }
+    }
+  }
+
+  private[sbt] object KafkaServer extends ServerContainer {
+    protected case class KafkaProcess(process: Process) extends ServerProcess(process)
+
+    protected type Server = KafkaProcess
+
+    def start(log: Logger, cp: Seq[File], zooKeperPort: Int, kafkaPropertiesFile: Option[File], jvmOptions: Seq[String], maxWaiting: FiniteDuration): Unit = {
+      val args = Array(zooKeperPort.toString) ++ kafkaPropertiesFile.toArray.map(_.getAbsolutePath)
+      val classpathOption = Path.makeString(cp)
+      val options = Seq[String](
+        "-classpath", classpathOption,
+        "com.lightbend.lagom.kafka.KafkaLauncher",
+        zooKeperPort.toString
+      ) ++ kafkaPropertiesFile.toSeq.map(_.getAbsolutePath)
+
+      val process = Fork.java.fork(ForkOptions(runJVMOptions = jvmOptions), options)
+      server = KafkaProcess(process)
+      server.enableKillOnExit()
+      log.info("Starting embedded Kafka server")
+    }
+
+    protected def stop(log: Logger): Unit = {
+      if (server == null) {
+        log.info("Kafka was already stopped")
+      } else {
+        log.info("Stopping Kafka")
         try server.kill()
         finally {
           try server.disableKillOnExit()

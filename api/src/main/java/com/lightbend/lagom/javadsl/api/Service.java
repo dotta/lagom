@@ -7,7 +7,14 @@ import java.util.Optional;
 
 import com.lightbend.lagom.internal.api.MethodRefMessageSerializer;
 import com.lightbend.lagom.internal.api.MethodRefServiceCallHolder;
+import com.lightbend.lagom.internal.api.MethodRefTopicHolder;
 import akka.japi.function.*;
+import akka.stream.javadsl.Source;
+
+import com.lightbend.lagom.javadsl.api.broker.Subscriber;
+import com.lightbend.lagom.javadsl.api.broker.Publisher;
+import com.lightbend.lagom.javadsl.api.broker.Topic;
+import com.lightbend.lagom.javadsl.api.broker.Topic.TopicId;
 import com.lightbend.lagom.javadsl.api.transport.Method;
 
 /**
@@ -427,4 +434,51 @@ public interface Service {
                 Optional.empty(), Optional.empty());
     }
 
+    static <Message> Descriptor.TopicCall<Message> topic(String topicId, java.lang.reflect.Method methodRef) {
+      return topic(topicId, (Object) methodRef);
+    }
+
+    static <Message> Descriptor.TopicCall<Message> topic(String topicId, Creator<Topic<Message>> methodRef) {
+      return topic(topicId, (Object) methodRef);
+    }
+
+    static <Message> Descriptor.TopicCall<Message> topic(String topicId, Object methodRef) {
+      return new Descriptor.TopicCall<>(TopicId.of(topicId), new MethodRefTopicHolder(methodRef),
+               new MethodRefMessageSerializer<>(), null);
+    }
+
+    static final class TopicSource<Message> implements Topic<Message>{
+      private final TopicId topicId;
+      private final Source<Message, ?> messages;
+
+      private TopicSource(Source<Message, ?> messages) {
+        this(TopicId.of("__unresolved__"), messages);
+      }
+
+      private TopicSource(TopicId topicId, Source<Message, ?> messages) {
+        this.topicId = topicId;
+        this.messages = messages;
+      }
+      
+      public Source<Message, ?> messages() { return this.messages; }
+
+      @Override
+      public TopicId topicId() { return this.topicId; }
+
+      public Topic<Message> withTopicId(TopicId topicId) {
+        return new TopicSource<>(topicId, messages);
+      }
+      @Override
+      public Subscriber<Message> subscribe() {
+        throw new UnsupportedOperationException("Topic#subscribe is not permitted in the service's topic implementation.");
+      }
+      @Override
+      public Publisher<Message> publisher() {
+        throw new UnsupportedOperationException("Topic#publisher is not permitted in the service's topic implementation.");
+      }
+    }
+
+    static <Message> Topic<Message> publish(Source<Message, ?> messages) {
+      return new TopicSource<>(messages);
+    }
 }
