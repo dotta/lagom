@@ -342,7 +342,7 @@ object LagomPlugin extends AutoPlugin {
     lagomServiceLocatorEnabled := true,
     lagomServiceLocatorPort := 8000,
     lagomServiceGatewayPort := 9000,
-    lagomServiceLocatorUrl := s"http://localhost:${lagomServiceLocatorPort.value}",
+    lagomServiceLocatorUrl := s"http://0.0.0.0:${lagomServiceLocatorPort.value}",
     lagomCassandraEnabled := true,
     lagomCassandraPort := 4000, // If you change the default make sure to also update the play/reference-overrides.conf in the persistence project
     lagomCassandraCleanOnStart := true,
@@ -353,7 +353,7 @@ object LagomPlugin extends AutoPlugin {
     lagomKafkaZookeperPort := 2181,
     lagomKafkaPort := 9092,
     lagomKafkaCleanOnStart := true,
-    lagomKafkaAddress := s"localhost:${lagomKafkaPort.value}",
+    lagomKafkaAddress := s"0.0.0.0:${lagomKafkaPort.value}",
     lagomKafkaJvmOptions := Seq("-Xms256m", "-Xmx1024m"),
     runAll <<= runServiceLocatorAndMicroservicesTask,
     Internal.Keys.interactionMode := PlayConsoleInteractionMode,

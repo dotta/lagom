@@ -98,7 +98,7 @@ object KafkaLocalServer {
     val kafkaProperties = PropertiesLoader.from(kafkaPropertiesFile)
     kafkaProperties.setProperty("log.dirs", dataDir.getAbsolutePath)
     kafkaProperties.setProperty("listeners", s"PLAINTEXT://:$kafkaPort")
-    kafkaProperties.setProperty("zookeeper.connect", s"localhost:$zooKeperServerPort")
+    kafkaProperties.setProperty("zookeeper.connect", s"0.0.0.0:$zooKeperServerPort")
     kafkaProperties
   }
 
