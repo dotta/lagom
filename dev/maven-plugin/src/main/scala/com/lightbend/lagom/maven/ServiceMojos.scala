@@ -124,7 +124,7 @@ class StartMojo @Inject() (serviceManager: ServiceManager, session: MavenSession
 
     val cassandraKeyspace = LagomConfig.normalizeCassandraKeyspaceName(project.getArtifactId)
 
-    val kafkaAddress = if (this.kafkaAddress == null) s"localhost:${this.kafkaPort}" else this.kafkaAddress
+    val kafkaAddress = if (this.kafkaAddress == null) s"0.0.0.0:${this.kafkaPort}" else this.kafkaAddress
 
     serviceManager.startServiceDevMode(project, selectedPort, serviceLocatorUrl, cassandraPort, cassandraKeyspace,
       kafkaAddress, playService = playService, resolvedWatchDirs)
